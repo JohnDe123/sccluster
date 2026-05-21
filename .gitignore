@@ -1,0 +1,88 @@
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+.venv
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Model files
+*.pt
+*.pth
+scvi_model/
+latent/
+
+# Data
+data/
+*.h5ad
+*.h5
+*.csv.gz
+*.tsv.gz
+
+# Logs
+*.log
+logs/
+
+# scVI
+scvi_logs/
+lightning_logs/
+
+# temp
+tmp/
+temp/
+*.tmp
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Generated outputs (paper, PPT, diagrams)
+sccluster_conference_paper.docx
+~$*.docx
+sccluster_pipeline_diagram.pptx
+*.pptx~
+generate_paper.js
+create_ppt.py
+inject_omml.py
+unpacked_paper/
+
+# Node (paper generation)
+node_modules/
+package.json
+package-lock.json

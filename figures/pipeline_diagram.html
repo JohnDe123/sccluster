@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @font-face {
+    font-family: 'WorkSans';
+    src: url('canvas-fonts/WorkSans-Regular.ttf') format('truetype');
+  }
+  @font-face {
+    font-family: 'WorkSans';
+    src: url('canvas-fonts/WorkSans-Bold.ttf') format('truetype');
+    font-weight: bold;
+  }
+  @font-face {
+    font-family: 'JetBrainsMono';
+    src: url('canvas-fonts/JetBrainsMono-Regular.ttf') format('truetype');
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #fafaf8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'WorkSans', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  .diagram {
+    width: 1240px;
+    height: 820px;
+    background: #ffffff;
+    position: relative;
+    border: 0.5px solid #e8e5e0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+  }
+
+  /* ── Module backgrounds ── */
+  .module-bg {
+    position: absolute;
+    border-radius: 4px;
+    top: 58px;
+    height: 450px;
+  }
+
+  .mod-preprocess  { left: 34px;  width: 252px; background: #f5f4f1; border: 0.5px solid #e0ded8; }
+  .mod-scvi        { left: 316px; width: 286px; background: #eef4f9; border: 0.5px solid #d0dde9; }
+  .mod-cluster     { left: 632px; width: 252px; background: #eef5ef; border: 0.5px solid #c8dcc9; }
+  .mod-marker      { left: 914px; width: 292px; background: #fdf5f0; border: 0.5px solid #f0d8c0; }
+
+  /* ── Module header labels ── */
+  .mod-label {
+    position: absolute;
+    top: 67px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .mod-label-pre  { left: 48px;  color: #6b6560; }
+  .mod-label-scvi { left: 330px; color: #3a5f8a; }
+  .mod-label-clus { left: 646px; color: #3d6b40; }
+  .mod-label-mark { left: 928px; color: #b85a2e; }
+
+  .mod-step-num {
+    position: absolute;
+    top: 64px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    font-size: 8.5px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .step1 { left: 34px;  background: #8c8279; }
+  .step2 { left: 316px; background: #4a7cb5; }
+  .step3 { left: 632px; background: #5a9a5e; }
+  .step4 { left: 914px; background: #d4784a; }
+
+  /* ── Arrow connectors between modules ── */
+  .arrow-h {
+    position: absolute;
+    top: 280px;
+    height: 0.8px;
+    background: #c5bfb8;
+  }
+  .arrow-h::after {
+    content: '';
+    position: absolute;
+    right: -1px; top: -4px;
+    width: 0; height: 0;
+    border-left: 8px solid #c5bfb8;
+    border-top: 4.5px solid transparent;
+    border-bottom: 4.5px solid transparent;
+  }
+  .arrow-1 { left: 286px; width: 30px; }
+  .arrow-2 { left: 602px; width: 30px; }
+  .arrow-3 { left: 884px; width: 30px; }
+
+  /* ── scVI encoder / decoder ── */
+  .nn-layer {
+    position: absolute;
+    background: #3a5f8a;
+    border-radius: 2px;
+    opacity: 0.82;
+  }
+
+  .latent-cloud {
+    position: absolute;
+    width: 62px; height: 62px;
+    top: 234px; left: 483px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(160,200,240,0.45) 0%, rgba(120,170,225,0.18) 50%, rgba(100,155,215,0.04) 100%);
+    border: 0.6px dashed rgba(100,140,190,0.40);
+  }
+
+  /* ── UMAP scatter simulation ── */
+  .umap-cluster-canvas {
+    position: absolute;
+    border-radius: 4px;
+    background: #fafcfa;
+  }
+
+  /* ── Typography elements ── */
+  .fig-title {
+    position: absolute;
+    top: 22px; left: 34px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #1a1816;
+  }
+  .fig-subtitle {
+    position: absolute;
+    top: 25px; right: 34px;
+    font-size: 8.5px;
+    color: #a09890;
+    letter-spacing: 0.03em;
+    text-align: right;
+    line-height: 1.5;
+  }
+
+  .inner-label {
+    font-size: 8px;
+    color: #5c5550;
+    letter-spacing: 0.02em;
+  }
+
+  .gene-tag {
+    font-size: 7.2px;
+    font-family: 'JetBrainsMono', 'Consolas', monospace;
+    color: #4a3f38;
+    letter-spacing: 0.01em;
+  }
+
+  .stat-num {
+    font-size: 8.5px;
+    font-weight: 700;
+    font-family: 'JetBrainsMono', 'Consolas', monospace;
+  }
+
+  /* ── Validation panel ── */
+  .valid-panel {
+    position: absolute;
+    top: 536px; left: 34px;
+    width: 1172px; height: 244px;
+    background: #fdfdfc;
+    border: 0.5px solid #e8e5e0;
+    border-radius: 4px;
+  }
+
+  .valid-label {
+    position: absolute;
+    top: 544px; left: 48px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #6b6560;
+    text-transform: uppercase;
+  }
+
+  /* ── Bottom dotplot ── */
+  .dot {
+    position: absolute;
+    border-radius: 50%;
+  }
+
+  /* ── Volcano miniature ── */
+  .volcano-point {
+    position: absolute;
+    border-radius: 50%;
+  }
+
+  /* Thin separator lines */
+  .sep-line {
+    position: absolute;
+    height: 0.5px;
+    background: #e0dcd6;
+  }
+
+  .caption {
+    font-size: 7.5px;
+    color: #9a938b;
+    letter-spacing: 0.02em;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="diagram" id="diagram">
+  <!-- Title -->
+  <div class="fig-title">scCluster: Hybrid Single‑Cell Clustering Workflow</div>
+  <div class="fig-subtitle">Thyroid Epithelial Cell Analysis<br/>scVI + Leiden + Wilcoxon</div>
+
+  <!-- Step number badges -->
+  <div class="mod-step-num step1">1</div>
+  <div class="mod-step-num step2">2</div>
+  <div class="mod-step-num step3">3</div>
+  <div class="mod-step-num step4">4</div>
+
+  <!-- Module backgrounds -->
+  <div class="module-bg mod-preprocess"></div>
+  <div class="module-bg mod-scvi"></div>
+  <div class="module-bg mod-cluster"></div>
+  <div class="module-bg mod-marker"></div>
+
+  <!-- Module headers -->
+  <div class="mod-label mod-label-pre">Input &amp; Preprocessing</div>
+  <div class="mod-label mod-label-scvi">Deep Representation Learning</div>
+  <div class="mod-label mod-label-clus">Graph‑Based Clustering</div>
+  <div class="mod-label mod-label-mark">Marker Gene Identification</div>
+
+  <!-- Arrows -->
+  <div class="arrow-h arrow-1"></div>
+  <div class="arrow-h arrow-2"></div>
+  <div class="arrow-h arrow-3"></div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- MODULE 1: Preprocessing -->
+  <!-- ═══════════════════════════════════════════ -->
+
+  <!-- Small heatmap representation -->
+  <svg x="48" y="102" width="224" height="80" style="position:absolute;">
+    <defs>
+      <pattern id="hm" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+        <rect width="4" height="4" fill="#e8e3db"/>
+      </pattern>
+    </defs>
+    <rect x="0" y="0" width="224" height="80" rx="2" fill="url(#hm)" stroke="#d5cfc7" stroke-width="0.4"/>
+    <!-- Heatmap cells with varying intensities -->
+    <g id="heatmap-cells"></g>
+  </svg>
+
+  <div style="position:absolute;top:106px;left:56px;font-size:7px;color:#8c8279;letter-spacing:0.04em;">Cells × Genes</div>
+
+  <!-- QC icon -->
+  <div style="position:absolute;top:200px;left:52px;width:44px;height:38px;background:#e8e3da;border-radius:3px;display:flex;align-items:center;justify-content:center;">
+    <svg width="28" height="22" viewBox="0 0 28 22"><rect x="2" y="4" width="6" height="14" rx="0.5" fill="#8c8279" opacity="0.7"/><rect x="11" y="8" width="6" height="10" rx="0.5" fill="#8c8279" opacity="0.9"/><rect x="20" y="1" width="6" height="17" rx="0.5" fill="#8c8279"/><rect x="3" y="20" width="22" height="1.5" rx="0.5" fill="#b5aca2"/></svg>
+  </div>
+  <div style="position:absolute;top:242px;left:52px;font-size:8px;color:#5c5550;">Quality Control</div>
+  <div style="position:absolute;top:252px;left:52px;font-size:7px;color:#9a938b;">min_genes · MT% · doublets</div>
+
+  <!-- Normalization icon -->
+  <div style="position:absolute;top:200px;left:130px;width:44px;height:38px;background:#e8e3da;border-radius:3px;display:flex;align-items:center;justify-content:center;">
+    <svg width="28" height="22" viewBox="0 0 28 22"><rect x="1" y="3" width="26" height="16" rx="1" fill="none" stroke="#8c8279" stroke-width="1"/><line x1="1" y1="14" x2="27" y2="14" stroke="#8c8279" stroke-width="0.8" stroke-dasharray="3,3"/><text x="14" y="12" text-anchor="middle" font-size="6" fill="#8c8279" font-family="sans-serif">1e4</text></svg>
+  </div>
+  <div style="position:absolute;top:242px;left:116px;font-size:8px;color:#5c5550;">Normalization</div>
+  <div style="position:absolute;top:252px;left:122px;font-size:7px;color:#9a938b;">log1p · 10K/cell</div>
+
+  <!-- HVG icon -->
+  <div style="position:absolute;top:200px;left:208px;width:44px;height:38px;background:#e8e3da;border-radius:3px;display:flex;align-items:center;justify-content:center;">
+    <svg width="28" height="22" viewBox="0 0 28 22"><line x1="3" y1="19" x2="25" y2="3" stroke="#8c8279" stroke-width="1.2"/><circle cx="8" cy="15" r="2.5" fill="#8c8279" opacity="0.8"/><circle cx="18" cy="5" r="2.5" fill="#b5aca2" opacity="0.5"/><circle cx="5" cy="17" r="1.5" fill="#8c8279" opacity="0.5"/><circle cx="22" cy="3" r="1.5" fill="#b5aca2" opacity="0.3"/></svg>
+  </div>
+  <div style="position:absolute;top:242px;left:214px;font-size:8px;color:#5c5550;">HVG Selection</div>
+  <div style="position:absolute;top:252px;left:208px;font-size:7px;color:#9a938b;">Top 2,000 genes</div>
+
+  <!-- Arrow down within module -->
+  <div style="position:absolute;top:186px;left:148px;width:0.7px;height:12px;background:#c5bfb8;"></div>
+  <div style="position:absolute;top:196px;left:145px;width:7px;height:7px;border-right:0.7px solid #c5bfb8;border-bottom:0.7px solid #c5bfb8;transform:rotate(45deg);"></div>
+
+  <!-- Raw -> Processed label -->
+  <div style="position:absolute;top:285px;left:48px;font-size:8px;color:#4a7cb5;font-weight:600;letter-spacing:0.02em;">
+    Filtered &amp; Normalized → scVI
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- MODULE 2: scVI VAE -->
+  <!-- ═══════════════════════════════════════════ -->
+
+  <!-- Dashed VAE box -->
+  <div style="position:absolute;top:92px;left:340px;width:238px;height:380px;border:0.6px dashed rgba(74,124,181,0.35);border-radius:3px;"></div>
+  <div style="position:absolute;top:96px;left:428px;font-size:7.2px;color:#6a90b8;letter-spacing:0.04em;text-transform:uppercase;">Variational Autoencoder</div>
+
+  <!-- Encoder layers -->
+  <div class="nn-layer" style="left:356px;top:130px;width:52px;height:12px;border-radius:2px;"></div>
+  <div class="nn-layer" style="left:356px;top:155px;width:52px;height:14px;border-radius:2px; opacity:0.72;"></div>
+  <div class="nn-layer" style="left:356px;top:182px;width:52px;height:16px;border-radius:2px; opacity:0.62;"></div>
+  <div style="position:absolute;left:362px;top:115px;font-size:7.5px;color:#4a7cb5;font-weight:600;letter-spacing:0.03em;">Encoder</div>
+
+  <!-- Decoder layers -->
+  <div class="nn-layer" style="left:520px;top:130px;width:52px;height:12px;border-radius:2px; opacity:0.62;"></div>
+  <div class="nn-layer" style="left:520px;top:155px;width:52px;height:14px;border-radius:2px; opacity:0.72;"></div>
+  <div class="nn-layer" style="left:520px;top:182px;width:52px;height:16px;border-radius:2px;"></div>
+  <div style="position:absolute;left:524px;top:115px;font-size:7.5px;color:#4a7cb5;font-weight:600;letter-spacing:0.03em;">Decoder</div>
+
+  <!-- Encoder → latent arrows -->
+  <div style="position:absolute;top:170px;left:408px;width:54px;height:0.7px;background:#a0bcd8;"></div>
+  <!-- Decoder ← latent arrows -->
+  <div style="position:absolute;top:170px;left:546px;width:54px;height:0.7px;background:#a0bcd8;"></div>
+
+  <!-- Latent space cloud -->
+  <div class="latent-cloud"></div>
+  <div style="position:absolute;top:255px;left:503px;font-size:10px;color:#4a7cb5;font-weight:700;font-family:'JetBrainsMono','Consolas',monospace;">z</div>
+
+  <!-- Reverse arrows -->
+  <div style="position:absolute;top:208px;left:408px;width:54px;height:0.7px;background:#a0bcd8;opacity:0.5;"></div>
+  <div style="position:absolute;top:208px;left:546px;width:54px;height:0.7px;background:#a0bcd8;opacity:0.5;"></div>
+
+  <!-- Input data label -->
+  <div style="position:absolute;top:224px;left:350px;font-size:7.2px;color:#7a9bb8;text-align:center;width:40px;">Count<br/>Matrix</div>
+
+  <!-- Reconstruction output label -->
+  <div style="position:absolute;top:224px;left:534px;font-size:7.2px;color:#7a9bb8;text-align:center;width:40px;">Reconstr.<br/>Counts</div>
+
+  <!-- NB/ZINB label -->
+  <div style="position:absolute;top:200px;left:524px;font-size:6.8px;color:#8aabc5;">ZINB</div>
+
+  <!-- scVI embedding arrow going down and out -->
+  <div style="position:absolute;top:300px;left:503px;width:0.7px;height:58px;background:#4a7cb5;"></div>
+  <div style="position:absolute;top:356px;left:499px;width:10px;height:10px;border-right:0.8px solid #4a7cb5;border-bottom:0.8px solid #4a7cb5;transform:rotate(45deg);"></div>
+  <div style="position:absolute;top:312px;left:508px;font-size:7px;color:#4a7cb5;letter-spacing:0.03em;white-space:nowrap;transform:rotate(-90deg);transform-origin:left top;">scVI Embedding</div>
+
+  <!-- Latent dim annotation -->
+  <div style="position:absolute;top:300px;left:378px;font-size:7px;color:#8aabc5;text-align:center;line-height:1.4;">
+    30-dim latent<br/>z ~ N(0,I)
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- MODULE 3: Graph-based Clustering -->
+  <!-- ═══════════════════════════════════════════ -->
+
+  <!-- kNN graph visual -->
+  <div style="position:absolute;top:102px;left:648px;width:220px;height:68px;background:#f8faf7;border-radius:3px;border:0.4px solid #d0dbcf;">
+    <svg width="220" height="68" style="position:absolute;top:0;left:0;">
+      <!-- Random node positions -->
+      <g id="knn-nodes"></g>
+    </svg>
+  </div>
+  <div style="position:absolute;top:106px;left:656px;font-size:7.5px;color:#3d6b40;font-weight:600;">k‑Nearest Neighbor Graph</div>
+  <div style="position:absolute;top:155px;left:656px;font-size:7px;color:#6b8c6e;">k = 15, metric = Euclidean</div>
+
+  <!-- Arrow down from graph to Leiden -->
+  <div style="position:absolute;top:172px;left:758px;width:0.7px;height:20px;background:#a0b8a2;"></div>
+  <div style="position:absolute;top:190px;left:755px;width:7px;height:7px;border-right:0.7px solid #a0b8a2;border-bottom:0.7px solid #a0b8a2;transform:rotate(45deg);"></div>
+
+  <!-- Leiden algorithm box -->
+  <div style="position:absolute;top:200px;left:678px;width:160px;height:40px;background:#d8e8d9;border-radius:3px;display:flex;align-items:center;justify-content:center;border:0.4px solid #b8d0b9;">
+    <span style="font-size:9px;color:#3d6b40;font-weight:700;letter-spacing:0.04em;">Leiden Algorithm</span>
+  </div>
+  <div style="position:absolute;top:218px;left:688px;font-size:7px;color:#5a8a5d;">Modularity optimization</div>
+  <div style="position:absolute;top:228px;left:688px;font-size:7px;color:#5a8a5d;">Resolution = 1.0</div>
+
+  <!-- Arrow down to clusters -->
+  <div style="position:absolute;top:242px;left:758px;width:0.7px;height:20px;background:#a0b8a2;"></div>
+  <div style="position:absolute;top:260px;left:755px;width:7px;height:7px;border-right:0.7px solid #a0b8a2;border-bottom:0.7px solid #a0b8a2;transform:rotate(45deg);"></div>
+
+  <!-- UMAP-like cluster scatter -->
+  <div style="position:absolute;top:275px;left:648px;width:220px;height:144px;background:#fafcfa;border-radius:4px;border:0.4px solid #d8e0d6;">
+    <svg width="220" height="144" style="position:absolute;top:0;left:0;">
+      <g id="umap-scatter"></g>
+    </svg>
+  </div>
+  <div style="position:absolute;top:279px;left:656px;font-size:7px;color:#6b8c6e;">UMAP projection</div>
+
+  <!-- Cluster legend -->
+  <div style="position:absolute;top:425px;left:656px;display:flex;gap:8px;">
+    <span style="display:inline-flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:#5a9a5e;"></span><span style="font-size:7px;color:#5c5550;">C0</span></span>
+    <span style="display:inline-flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:#e8a840;"></span><span style="font-size:7px;color:#5c5550;">C1</span></span>
+    <span style="display:inline-flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:#c570a0;"></span><span style="font-size:7px;color:#5c5550;">C2</span></span>
+    <span style="display:inline-flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:#5a8ec0;"></span><span style="font-size:7px;color:#5c5550;">C3</span></span>
+    <span style="display:inline-flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:#b090c8;"></span><span style="font-size:7px;color:#5c5550;">C4</span></span>
+  </div>
+
+  <!-- Cluster data annotation -->
+  <div style="position:absolute;top:442px;left:656px;font-size:7px;color:#9a938b;">
+    <span class="stat-num" style="color:#3d6b40;">n</span> clusters found
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- MODULE 4: Marker Gene Identification -->
+  <!-- ═══════════════════════════════════════════ -->
+
+  <!-- Cluster comparison visual -->
+  <div style="position:absolute;top:102px;left:930px;width:260px;height:54px;background:#fefaf7;border-radius:3px;border:0.4px solid #ecd8c4;">
+    <!-- Target cluster vs rest -->
+    <div style="position:absolute;top:110px;left:946px;width:40px;height:24px;background:#e8c8a8;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:#8b4513;">Target</div>
+    <div style="position:absolute;top:114px;left:1000px;font-size:12px;color:#b85a2e;">vs.</div>
+    <div style="position:absolute;top:110px;left:1036px;width:40px;height:24px;background:#f0e0d0;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:#8b6b4a;">Rest</div>
+    <!-- Connecting line -->
+    <div style="position:absolute;top:121px;left:988px;width:10px;height:0.7px;background:#d4a878;"></div>
+    <div style="position:absolute;top:121px;left:1078px;width:10px;height:0.7px;background:#d4a878;"></div>
+  </div>
+  <div style="position:absolute;top:106px;left:940px;font-size:8px;color:#b85a2e;font-weight:600;">Wilcoxon Rank‑Sum Test</div>
+
+  <!-- Arrow down -->
+  <div style="position:absolute;top:158px;left:1060px;width:0.7px;height:14px;background:#d4a878;"></div>
+
+  <!-- H0 hypothesis -->
+  <div style="position:absolute;top:164px;left:974px;font-size:7px;color:#9a6b4a;">
+    H<sub>0</sub>: expression<sub>cluster</sub> = expression<sub>rest</sub>
+  </div>
+
+  <!-- Volcano miniature -->
+  <div style="position:absolute;top:190px;left:930px;width:130px;height:76px;background:#fefcf9;border-radius:3px;border:0.4px solid #f0d8c2;">
+    <svg width="130" height="76" style="position:absolute;top:0;left:0;">
+      <g id="volcano-plot"></g>
+    </svg>
+  </div>
+  <div style="position:absolute;top:194px;left:940px;font-size:7px;color:#b85a2e;font-weight:600;">Volcano Plot</div>
+
+  <!-- Threshold annotation -->
+  <div style="position:absolute;top:250px;left:952px;font-size:6.5px;color:#9a6b4a;">p<sub>adj</sub> &lt; 0.05</div>
+  <div style="position:absolute;top:258px;left:952px;font-size:6.5px;color:#9a6b4a;">|logFC| &gt; 1.0</div>
+
+  <!-- Result table -->
+  <div style="position:absolute;top:190px;left:1074px;width:116px;height:76px;background:#fefcf9;border-radius:3px;border:0.4px solid #f0d8c2;">
+    <div style="padding:6px 8px;">
+      <div style="font-size:7px;color:#8b4513;font-weight:600;margin-bottom:4px;">Top Markers</div>
+      <div style="font-size:6.5px;color:#6b4a30;line-height:1.6;">
+        <span class="gene-tag">TG</span>&nbsp;&nbsp;&nbsp; logFC 3.2 ***<br/>
+        <span class="gene-tag">TPO</span>&nbsp;&nbsp; logFC 2.8 ***<br/>
+        <span class="gene-tag">TSHR</span>&nbsp; logFC 2.1 **<br/>
+        <span class="gene-tag">PAX8</span>&nbsp; logFC 1.9 **
+      </div>
+    </div>
+  </div>
+
+  <!-- BH correction -->
+  <div style="position:absolute;top:276px;left:930px;font-size:7px;color:#9a938b;">
+    Benjamini‑Hochberg FDR correction
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- VALIDATION PANEL (bottom) -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="valid-panel"></div>
+  <div class="valid-label">Validation &amp; Visualization</div>
+
+  <!-- Left: UMAP with clusters (larger) -->
+  <div style="position:absolute;top:564px;left:52px;width:380px;height:188px;background:#fafcfa;border-radius:4px;border:0.4px solid #e0dcd6;">
+    <svg width="380" height="188" style="position:absolute;top:0;left:0;">
+      <g id="valid-umap"></g>
+    </svg>
+    <div style="position:absolute;top:8px;left:12px;font-size:8px;color:#5c5550;font-weight:600;">UMAP: scVI Latent Space</div>
+    <!-- Legend -->
+    <div style="position:absolute;bottom:8px;left:12px;display:flex;gap:6px;flex-wrap:wrap;">
+      <span style="display:inline-flex;align-items:center;gap:2px;"><span style="width:6px;height:6px;border-radius:50%;background:#5a9a5e;"></span><span style="font-size:6.5px;color:#7a7570;">Follicular 1</span></span>
+      <span style="display:inline-flex;align-items:center;gap:2px;"><span style="width:6px;height:6px;border-radius:50%;background:#e8a840;"></span><span style="font-size:6.5px;color:#7a7570;">Follicular 2</span></span>
+      <span style="display:inline-flex;align-items:center;gap:2px;"><span style="width:6px;height:6px;border-radius:50%;background:#c570a0;"></span><span style="font-size:6.5px;color:#7a7570;">C‑cells</span></span>
+      <span style="display:inline-flex;align-items:center;gap:2px;"><span style="width:6px;height:6px;border-radius:50%;background:#5a8ec0;"></span><span style="font-size:6.5px;color:#7a7570;">Hurthle</span></span>
+      <span style="display:inline-flex;align-items:center;gap:2px;"><span style="width:6px;height:6px;border-radius:50%;background:#b090c8;"></span><span style="font-size:6.5px;color:#7a7570;">Progenitor</span></span>
+    </div>
+  </div>
+
+  <!-- Right: Dotplot -->
+  <div style="position:absolute;top:564px;left:455px;width:480px;height:188px;background:#fafcfa;border-radius:4px;border:0.4px solid #e0dcd6;">
+    <svg width="480" height="188" style="position:absolute;top:0;left:0;">
+      <g id="valid-dotplot"></g>
+    </svg>
+  </div>
+
+  <!-- Right side: key genes label -->
+  <div style="position:absolute;top:568px;left:815px;font-size:7.5px;color:#5c5550;font-weight:600;">Marker Gene Expression</div>
+  <div style="position:absolute;top:576px;left:690px;font-size:6.5px;color:#9a938b;">Dot size = % cells expressed &nbsp; Color = mean expression</div>
+
+  <!-- Bottom caption line -->
+  <div class="sep-line" style="top:524px;left:34px;width:1172px;"></div>
+  <div style="position:absolute;top:795px;left:34px;width:1172px;text-align:center;" class="caption">
+    scCluster Pipeline &nbsp;·&nbsp; scVI (Lopez et al., Nature Methods 2018) &nbsp;·&nbsp; Leiden (Traag et al., Scientific Reports 2019) &nbsp;·&nbsp; Scanpy (Wolf et al., Genome Biology 2018)
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// Generate heatmap cells (Module 1)
+// ═══════════════════════════════════════════════════════
+(function() {
+  const svg = document.querySelector('#heatmap-cells');
+  const intensities = [0.15,0.22,0.08,0.45,0.12,0.35,0.05,0.55,0.18,0.30,0.42,0.09,0.50,0.25,0.14,0.38,0.20,0.48,0.07,0.32,0.28,0.10,0.52,0.16,0.40,0.22,0.08,0.35,0.44,0.11];
+  const baseX = 2, baseY = 2, cellW = 3.8, cellH = 3.8, cols = 28, rows = 20;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const idx = (r * cols + c) % intensities.length;
+      const v = intensities[idx] * (0.6 + 0.4 * Math.random());
+      const color = `rgba(130,120,105,${v.toFixed(2)})`;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x', baseX + c * cellW);
+      rect.setAttribute('y', baseY + r * cellH);
+      rect.setAttribute('width', cellW - 0.3);
+      rect.setAttribute('height', cellH - 0.3);
+      rect.setAttribute('fill', color);
+      rect.setAttribute('rx', '0.3');
+      svg.appendChild(rect);
+    }
+  }
+})();
+
+// ═══════════════════════════════════════════════════════
+// kNN graph nodes (Module 3)
+// ═══════════════════════════════════════════════════════
+(function() {
+  const svg = document.querySelector('#knn-nodes');
+  const nodes = [];
+  const colors = ['#5a9a5e','#e8a840','#c570a0','#5a8ec0','#b090c8'];
+  for (let i = 0; i < 30; i++) {
+    nodes.push({
+      x: 10 + Math.random() * 200,
+      y: 8 + Math.random() * 52,
+      c: colors[Math.floor(Math.random() * colors.length)],
+      r: 1.5 + Math.random() * 1.5
+    });
+  }
+  // Draw edges (connect nearby nodes)
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i+1; j < nodes.length; j++) {
+      const dx = nodes[i].x - nodes[j].x;
+      const dy = nodes[i].y - nodes[j].y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 35) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1', nodes[i].x);
+        line.setAttribute('y1', nodes[i].y);
+        line.setAttribute('x2', nodes[j].x);
+        line.setAttribute('y2', nodes[j].y);
+        line.setAttribute('stroke', '#c8d8c5');
+        line.setAttribute('stroke-width', '0.4');
+        line.setAttribute('opacity', 1 - dist/35);
+        svg.appendChild(line);
+      }
+    }
+  }
+  // Draw nodes
+  nodes.forEach(n => {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', n.x);
+    circle.setAttribute('cy', n.y);
+    circle.setAttribute('r', n.r);
+    circle.setAttribute('fill', n.c);
+    circle.setAttribute('opacity', '0.8');
+    svg.appendChild(circle);
+  });
+})();
+
+// ═══════════════════════════════════════════════════════
+// UMAP scatter in Module 3
+// ═══════════════════════════════════════════════════════
+(function() {
+  const svg = document.querySelector('#umap-scatter');
+  const clusterColors = ['#5a9a5e','#e8a840','#c570a0','#5a8ec0','#b090c8'];
+  const centers = [[45,30],[160,25],[100,110],[35,95],[155,100]];
+  for (let ci = 0; ci < 5; ci++) {
+    const cx = centers[ci][0], cy = centers[ci][1];
+    for (let i = 0; i < 55; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.random() * 22;
+      const x = cx + Math.cos(angle) * radius;
+      const y = cy + Math.sin(angle) * radius * 0.8;
+      if (x > 5 && x < 215 && y > 5 && y < 139) {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        circle.setAttribute('cx', x); circle.setAttribute('cy', y);
+        circle.setAttribute('r', '1.1');
+        circle.setAttribute('fill', clusterColors[ci]);
+        circle.setAttribute('opacity', '0.75');
+        svg.appendChild(circle);
+      }
+    }
+  }
+})();
+
+// ═══════════════════════════════════════════════════════
+// Volcano plot in Module 4
+// ═══════════════════════════════════════════════════════
+(function() {
+  const svg = document.querySelector('#volcano-plot');
+  const cx = 65, cy = 42;
+  // Axes
+  const axLine = document.createElementNS('http://www.w3.org/2000/svg','line');
+  axLine.setAttribute('x1','20'); axLine.setAttribute('y1',cy);
+  axLine.setAttribute('x2','118'); axLine.setAttribute('y2',cy);
+  axLine.setAttribute('stroke','#d5c5b0'); axLine.setAttribute('stroke-width','0.4');
+  svg.appendChild(axLine);
+
+  const ayLine = document.createElementNS('http://www.w3.org/2000/svg','line');
+  ayLine.setAttribute('x1',cx); ayLine.setAttribute('y1','62');
+  ayLine.setAttribute('x2',cx); ayLine.setAttribute('y2','10');
+  ayLine.setAttribute('stroke','#d5c5b0'); ayLine.setAttribute('stroke-width','0.4');
+  svg.appendChild(ayLine);
+
+  // Threshold lines
+  const th = document.createElementNS('http://www.w3.org/2000/svg','line');
+  th.setAttribute('x1','20'); th.setAttribute('y1','26');
+  th.setAttribute('x2','118'); th.setAttribute('y2','26');
+  th.setAttribute('stroke','#e0c8b0'); th.setAttribute('stroke-width','0.3');
+  th.setAttribute('stroke-dasharray','3,2');
+  svg.appendChild(th);
+
+  // Points
+  for (let i = 0; i < 80; i++) {
+    const x = cx + (Math.random() - 0.5) * 90;
+    const y = cy - Math.random() * 32;
+    const r = 0.8 + Math.random() * 1.0;
+    const distFromCenter = Math.abs(x - cx) / 45;
+    const height = (cy - y) / 32;
+    const isSig = distFromCenter > 0.5 && height > 0.45;
+    const color = isSig ? (x > cx ? '#d4784a' : '#4a7cb5') : '#d5cdc4';
+    const opacity = isSig ? 0.75 : 0.35;
+    const point = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    point.setAttribute('cx', x); point.setAttribute('cy', y);
+    point.setAttribute('r', r); point.setAttribute('fill', color);
+    point.setAttribute('opacity', opacity);
+    svg.appendChild(point);
+  }
+
+  // Labels
+  const upLabel = document.createElementNS('http://www.w3.org/2000/svg','text');
+  upLabel.setAttribute('x','90'); upLabel.setAttribute('y','18');
+  upLabel.setAttribute('font-size','5.5'); upLabel.setAttribute('fill','#d4784a');
+  upLabel.setAttribute('font-family','sans-serif'); upLabel.textContent = 'Up';
+  svg.appendChild(upLabel);
+
+  const dnLabel = document.createElementNS('http://www.w3.org/2000/svg','text');
+  dnLabel.setAttribute('x','22'); dnLabel.setAttribute('y','18');
+  dnLabel.setAttribute('font-size','5.5'); dnLabel.setAttribute('fill','#4a7cb5');
+  dnLabel.setAttribute('font-family','sans-serif'); dnLabel.textContent = 'Down';
+  svg.appendChild(dnLabel);
+})();
+
+// ═══════════════════════════════════════════════════════
+// Validation UMAP (larger, bottom panel)
+// ═══════════════════════════════════════════════════════
+(function() {
+  const svg = document.querySelector('#valid-umap');
+  const clusterColors = ['#5a9a5e','#e8a840','#c570a0','#5a8ec0','#b090c8'];
+  const centers = [[80,55],[330,40],[200,140],[70,130],[310,130]];
+  for (let ci = 0; ci < 5; ci++) {
+    const cx = centers[ci][0], cy = centers[ci][1];
+    for (let i = 0; i < 90; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.random() * 35;
+      const x = cx + Math.cos(angle) * radius;
+      const y = cy + Math.sin(angle) * radius * 0.75;
+      if (x > 8 && x < 372 && y > 8 && y < 170) {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        circle.setAttribute('cx', x); circle.setAttribute('cy', y);
+        circle.setAttribute('r', '1.2');
+        circle.setAttribute('fill', clusterColors[ci]);
+        circle.setAttribute('opacity', '0.7');
+        svg.appendChild(circle);
+      }
+    }
+  }
+  // Axis labels
+  const xl = document.createElementNS('http://www.w3.org/2000/svg','text');
+  xl.setAttribute('x','185'); xl.setAttribute('y','183');
+  xl.setAttribute('font-size','6.5'); xl.setAttribute('fill','#aaa59e');
+  xl.setAttribute('text-anchor','middle'); xl.setAttribute('font-family','sans-serif');
+  xl.textContent = 'UMAP 1';
+  svg.appendChild(xl);
+  const yl = document.createElementNS('http://www.w3.org/2000/svg','text');
+  yl.setAttribute('x','4'); yl.setAttribute('y','95');
+  yl.setAttribute('font-size','6.5'); yl.setAttribute('fill','#aaa59e');
+  yl.setAttribute('font-family','sans-serif'); yl.setAttribute('transform','rotate(-90,4,95)');
+  yl.textContent = 'UMAP 2';
+  svg.appendChild(yl);
+})();
+
+// ═══════════════════════════════════════════════════════
+// Dotplot (bottom panel)
+// ═══════════════════════════════════════════════════════
+(function() {
+  const svg = document.querySelector('#valid-dotplot');
+  const clusters = ['C0','C1','C2','C3','C4'];
+  const genes = ['TG','TPO','TSHR','PAX8','NKX2-1','KRT19','CALCA','CHGA','SLC5A5','DIO1','IYD','FCGBP'];
+  // data: [pct_expressed, mean_expr] per (cluster, gene)
+  const data = {
+    'C0': { 'TG':[0.88,2.8],'TPO':[0.82,2.5],'TSHR':[0.75,2.0],'PAX8':[0.70,1.8],'NKX2-1':[0.65,1.5],'KRT19':[0.45,0.9],'CALCA':[0.05,0.2],'CHGA':[0.08,0.2],'SLC5A5':[0.60,1.3],'DIO1':[0.55,1.1],'IYD':[0.50,1.0],'FCGBP':[0.40,0.8] },
+    'C1': { 'TG':[0.75,1.9],'TPO':[0.70,1.7],'TSHR':[0.55,1.1],'PAX8':[0.60,1.3],'NKX2-1':[0.50,0.9],'KRT19':[0.85,2.6],'CALCA':[0.10,0.2],'CHGA':[0.05,0.1],'SLC5A5':[0.35,0.7],'DIO1':[0.30,0.6],'IYD':[0.25,0.5],'FCGBP':[0.55,1.2] },
+    'C2': { 'TG':[0.02,0.1],'TPO':[0.01,0.0],'TSHR':[0.05,0.1],'PAX8':[0.08,0.2],'NKX2-1':[0.10,0.2],'KRT19':[0.30,0.7],'CALCA':[0.90,3.0],'CHGA':[0.88,2.8],'SLC5A5':[0.05,0.0],'DIO1':[0.02,0.0],'IYD':[0.04,0.1],'FCGBP':[0.15,0.3] },
+    'C3': { 'TG':[0.15,0.3],'TPO':[0.10,0.2],'TSHR':[0.12,0.2],'PAX8':[0.15,0.3],'NKX2-1':[0.30,0.7],'KRT19':[0.40,0.9],'CALCA':[0.05,0.1],'CHGA':[0.20,0.5],'SLC5A5':[0.10,0.2],'DIO1':[0.08,0.1],'IYD':[0.18,0.4],'FCGBP':[0.35,0.8] },
+    'C4': { 'TG':[0.08,0.1],'TPO':[0.05,0.1],'TSHR':[0.20,0.5],'PAX8':[0.35,0.8],'NKX2-1':[0.45,1.0],'KRT19':[0.50,1.1],'CALCA':[0.05,0.1],'CHGA':[0.10,0.2],'SLC5A5':[0.08,0.1],'DIO1':[0.05,0.1],'IYD':[0.10,0.2],'FCGBP':[0.55,1.3] }
+  };
+
+  const startX = 110, startY = 28, cellW = 28, cellH = 13;
+  const maxSize = 6, maxExpr = 3.2;
+
+  // Column headers (genes)
+  genes.forEach((g, gi) => {
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x', startX + gi*cellW + cellW/2);
+    txt.setAttribute('y', startY - 6);
+    txt.setAttribute('font-size','5.8'); txt.setAttribute('fill','#4a3f38');
+    txt.setAttribute('text-anchor','middle');
+    txt.setAttribute('font-family','JetBrainsMono,Consolas,monospace');
+    txt.textContent = g;
+    svg.appendChild(txt);
+  });
+
+  // Row labels (clusters)
+  clusters.forEach((cl, ci) => {
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x', startX - 6); txt.setAttribute('y', startY + ci*cellH + cellH/2 + 2);
+    txt.setAttribute('font-size','7'); txt.setAttribute('fill','#5c5550');
+    txt.setAttribute('text-anchor','end');
+    txt.setAttribute('font-family','WorkSans,sans-serif');
+    txt.setAttribute('font-weight','600');
+    txt.textContent = cl;
+    svg.appendChild(txt);
+  });
+
+  // Dot matrix
+  clusters.forEach((cl, ci) => {
+    genes.forEach((g, gi) => {
+      const d = data[cl][g];
+      if (!d) return;
+      const pct = d[0], expr = d[1];
+      const cx = startX + gi*cellW + cellW/2;
+      const cy = startY + ci*cellH + cellH/2;
+      const size = 1.2 + (pct / 1.0) * (maxSize - 1.2);
+      const intensity = Math.max(0.08, expr / maxExpr);
+      const color = `rgba(180,90,45,${intensity.toFixed(2)})`;
+
+      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
+      dot.setAttribute('r', size); dot.setAttribute('fill', color);
+      svg.appendChild(dot);
+    });
+  });
+
+  // Legend
+  const legX = 420, legY = 30;
+  [0.2,0.5,0.8,1.0].forEach((v,i) => {
+    const sz = 1.2 + v * (maxSize - 1.2);
+    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx', legX); dot.setAttribute('cy', legY + i*16);
+    dot.setAttribute('r', sz); dot.setAttribute('fill', `rgba(180,90,45,${(0.1+v*0.7).toFixed(2)})`);
+    svg.appendChild(dot);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x', legX + 10); txt.setAttribute('y', legY + i*16 + 2);
+    txt.setAttribute('font-size','5.8'); txt.setAttribute('fill','#9a938b');
+    txt.textContent = `${Math.round(v*100)}%`;
+    svg.appendChild(txt);
+  });
+  const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+  lbl.setAttribute('x', legX - 2); lbl.setAttribute('y', legY - 6);
+  lbl.setAttribute('font-size','5.5'); lbl.setAttribute('fill','#aaa59e');
+  lbl.textContent = '% expr.';
+  svg.appendChild(lbl);
+})();
+</script>
+
+</body>
+</html>
