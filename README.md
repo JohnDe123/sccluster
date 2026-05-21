@@ -52,7 +52,7 @@ F[步骤5: 结果验证与可视化<br/>UMAP图 / 差异基因火山图 / 热图
 ### From source
 
 ```bash
-git clone https://github.com/user/sccluster.git
+git clone https://github.com/JohnDe123/sccluster.git
 cd sccluster
 pip install -e .
 ```

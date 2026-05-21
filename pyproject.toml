@@ -54,9 +54,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/user/sccluster"
-Repository = "https://github.com/user/sccluster"
-Issues = "https://github.com/user/sccluster/issues"
+Homepage = "https://github.com/JohnDe123/sccluster"
+Repository = "https://github.com/JohnDe123/sccluster"
+Issues = "https://github.com/JohnDe123/sccluster/issues"
 
 [project.scripts]
 sccluster = "sccluster.cli:main"
